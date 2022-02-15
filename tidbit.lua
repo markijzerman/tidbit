@@ -4,9 +4,11 @@ MusicUtil = require "musicutil"
 
 -- engine.name = "PolyPerc" -- engine for trying stuff without JF
 
-amtNotes = 5
-
 notes = { {0,0,0,0,0},
+          {0,0,0,0,0},
+          {0,0,0,0,0},
+          {0,0,0,0,0},
+          {0,0,0,0,0},
           {0,0,0,0,0},
           {0,0,0,0,0},
           {0,0,0,0,0},
@@ -16,10 +18,26 @@ noteAmps = { {0,0,0,0,0},
           {0,0,0,0,0},
           {0,0,0,0,0},
           {0,0,0,0,0},
+          {0,0,0,0,0},
+          {0,0,0,0,0},
+          {0,0,0,0,0},
+          {0,0,0,0,0},
         }
         
+randomOffsets = { {math.random()*1.01,math.random()*1.01,math.random()*1.01,math.random()*1.01,math.random()*1.01},
+  {math.random()*1.01,math.random()*1.01,math.random()*1.01,math.random()*1.01,math.random()*1.01},
+  {math.random()*1.01,math.random()*1.01,math.random()*1.01,math.random()*1.01,math.random()*1.01},
+  {math.random()*1.01,math.random()*1.01,math.random()*1.01,math.random()*1.01,math.random()*1.01},
+  {math.random()*1.01,math.random()*1.01,math.random()*1.01,math.random()*1.01,math.random()*1.01},
+  {math.random()*1.01,math.random()*1.01,math.random()*1.01,math.random()*1.01,math.random()*1.01},
+  {math.random()*1.01,math.random()*1.01,math.random()*1.01,math.random()*1.01,math.random()*1.01},
+  {math.random()*1.01,math.random()*1.01,math.random()*1.01,math.random()*1.01,math.random()*1.01},
+  }
+        
 tune = 0.00 -- tune to pitch with this (offset)
--- spread = 0.00 -- yet to implement
+spread = 0.00 -- spread it!
+runningtxt = "~OFF~"
+
 
 -- PLUCKYLOGGER STUFF
   function wsyn_add_params()
@@ -172,13 +190,13 @@ tune = 0.00 -- tune to pitch with this (offset)
   params:hide("wsyn_init")
   
 end
-  
-  
   -- END PLUCKYLOGGER
 
 function init()
   crow.ii.jf.mode(1)
   crow.ii.wsyn.ar_mode(1)
+  crow.output[1].action = "pulse(0.001,10)"
+  crow.output[2].action = "pulse(0.001,10)"
   screen.level(15)
   screen.aa(0)
   screen.line_width(1)
@@ -207,8 +225,14 @@ function init()
   division = 32
   
   
-  params:add_control('tune', "tune", controlspec.BIPOLAR)
+  params:add{type='control', id= "tune","tune", controlspec=controlspec.new(-3,3,'lin',1,0,'tune',0.01)}
   params:set_action("tune", function(x)  tune = x end)
+  
+  params:add{type='control', id= "morphagenePitch","morphagenePitch", controlspec=controlspec.new(0,72,'lin',12,0,'tune',0.01)}
+  params:set_action("morphagenePitch", function(x)  crow.output[3].volts = (x+3) / 12 end)
+  
+  params:add_control('spread', "spread", controlspec.UNIPOLAR)
+  params:set_action("spread", function(x)  spread = x end)
   
   params:add{type='binary',name="randomize notes",id='randomize',behavior='trigger',
     action=function(v)
@@ -242,7 +266,7 @@ function init()
       params:set_action('note-'..i..'-'..j, function(x) notes[i][j] = x end)
       params:set('note-'..i..'-'..j, notes[i][j])
 
-      params:add{type="control",id='note-'..i..'-'..j..'-amp','note-'..i..'-'..j..'-amp',controlspec=controlspec.new(0,1,'lin',0.001,1.0,'amp',0.01)} 
+      params:add{type="control",id='note-'..i..'-'..j..'-amp','note-'..i..'-'..j..'-amp',controlspec=controlspec.new(0,1,'lin',0.0001,1.0,'amp',0.0025)} 
       params:set_action('note-'..i..'-'..j..'-amp', function(x) noteAmps[i][j] = x end)
       params:set('note-'..i..'-'..j..'-amp', noteAmps[i][j])
     end
@@ -285,6 +309,7 @@ function redraw()
     for i=1,24 do
       
       if i == (noteForDrawing % 24) then
+        --r = 5
         r = ampForDrawing*math.random(5,10)
       else
         r = 1
@@ -292,7 +317,7 @@ function redraw()
       
       local x = 1 + (i*5)
       local y = 35 + math.random(1,5)
-      --local r = 1
+      local r = 1
       screen.move(x+r,y)
       screen.circle(x, y, r)
       screen.stroke()
@@ -301,6 +326,8 @@ function redraw()
 
   screen.move(5,60)
   screen.text("K2 = start/stop")
+  screen.move(100,60)
+  screen.text(runningtxt)
   screen.update()
 end
 
@@ -332,20 +359,21 @@ function strum()
     -- select which of the sets to play
     clock.sync(1/division)
     note = math.random(#notes[1])
-    
+
+
     if selected_voice == 1 then
-      crow.ii.jf.play_note((notes[noteSet][note]/12-1)+tune,math.random(10)*noteAmps[noteSet][note])
+      crow.ii.jf.play_note((notes[noteSet][note]/12-1)+tune+(spread*randomOffsets[noteSet][note]),math.random(10)*noteAmps[noteSet][note])
       
     elseif selected_voice == 2 then
-      crow.ii.wsyn.play_note((notes[noteSet][note]/12-1)+tune,math.random(10)*noteAmps[noteSet][note])
+      crow.ii.wsyn.play_note((notes[noteSet][note]/12-1)+tune+ (spread*randomOffsets[noteSet][note]),math.random(10)*noteAmps[noteSet][note])
 
     
     elseif selected_voice == 3 then
       local randomNumber = math.random(100)
       if randomNumber < voice_chance then
-      crow.ii.jf.play_note((notes[noteSet][note]/12-1)+tune,math.random(10)*noteAmps[noteSet][note])
+      crow.ii.jf.play_note((notes[noteSet][note]/12-1)+tune + (spread*randomOffsets[noteSet][note]),math.random(10)*noteAmps[noteSet][note])
       else
-        crow.ii.wsyn.play_note((notes[noteSet][note]/12-1)+tune,math.random(10)*noteAmps[noteSet][note])
+        crow.ii.wsyn.play_note((notes[noteSet][note]/12-1)+tune + (spread*randomOffsets[noteSet][note]),math.random(10)*noteAmps[noteSet][note])
       end
       
     -- send current note and redraw
@@ -353,32 +381,44 @@ function strum()
     ampForDrawing = noteAmps[noteSet][note]
     redraw()
     end
-    
-    
-    
-    -- for testing w/ polyperc
-    -- engine.amp(math.random(1)*noteAmps[noteSet][note])
-    -- engine.hz(midi_to_hz(48+(notes[noteSet][note]/12-1)+tune))
-    
-    -- for the screen
-    -- do something cool with a slider with flickering bits on it
-    
-    
     redraw()
+  end
+end
+
+
+function clockdiv1()
+  while true do
+    clock.sync(1/1)
+    crow.output[1]()
+  end
+end
+
+function clockdiv2()
+  while true do
+    clock.sync(4/1)
+    crow.output[2]()
   end
 end
     
 function clock.transport.start()
   print("we begin")
+  runningtxt = "~ON~"
+  redraw()
   id = clock.run(strum)
+  id2 = clock.run(clockdiv1)
+  id3 = clock.run(clockdiv2)
 end
 
 function clock.transport.stop()
   print("we stop")
+  runningtxt = "~OFF~"
+  redraw()
   noteForDrawing = nil
   ampForDrawing = nil
   redraw()
   clock.cancel(id)
+  clock.cancel(id2)
+  clock.cancel(id3)
 end
 
 function midi_to_hz(note) -- this is only here for the polyperc engine test
