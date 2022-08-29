@@ -1,4 +1,9 @@
 -- tidbit by mark ijzerman
+--
+--
+--   . . .    .  . .  . .. .   . . ..  .
+--   .  .   ..  . . ..  . ....  .. ..  .
+--     .   . ..   . .. .. . .    . ...  .
 
 MusicUtil = require "musicutil"
 
@@ -185,17 +190,32 @@ function init()
   
   -- set the menu
   params:add_separator("TIDBIT")
-  
-  
+
   params:add{type="control",id='noteSet',"Noteset",controlspec=controlspec.new(1,#notes,'lin',1,1,'note set',0.08)} -- minval, maxval, warp, step, default, units, quantum, wrap
   params:set_action("noteSet", function(x)  noteSet = x end)
   noteSet= 1
   
-  local voice_options = {"jf", "w/synth", "jf & wsynth"}
-  params:add_option("voices","voices",voice_options,1)
-  params:set_action("voices", function(x) selected_voice = x end) -- select the voices
+  local voice_options = {"jf", "w/synth", "jf & wsynth", "midi"}
+  params:add_option("voices","voices",voice_options, 1)
+  params:add_number("midi_dev", "midi device", 1, 4, 1)
+  params:hide("midi_dev")
+  params:add_number("midi_ch", "midi channel", 1, 16, 1)
+  params:hide("midi_ch")
+  _menu.rebuild_params()
+  params:set_action("voices", function(x)
+		       selected_voice = x
+		       if voice_options[x] == "midi" then
+			  params:show("midi_dev")
+			  params:show("midi_ch")
+			  _menu.rebuild_params()
+		       else
+			  params:hide("midi_dev")
+			  params:hide("midi_ch")
+			  _menu.rebuild_params()
+		       end
+  end)
   selected_voice = 1
-  
+
   params:add_number('voice_chance', 'voice_chance', 0, 100, 50)
   params:set_action("voice_chance", function(x)  voice_chance = x end)
   voice_chance = 50
@@ -348,6 +368,12 @@ function strum()
         crow.ii.wsyn.play_note((notes[noteSet][note]/12-1)+tune,math.random(10)*noteAmps[noteSet][note])
       end
       
+    elseif selected_voice == 4 then
+      local midi_dev = midi.connect(params:get("midi_dev"))
+      midi_note = math.floor(notes[noteSet][note]+tune*12)
+      midi_amp = util.round(util.linlin(0, 10, 0, 127, math.random(10)*noteAmps[noteSet][note]))
+      midi_dev:note_on(midi_note, midi_amp, params:get("midi_ch"))
+
     -- send current note and redraw
     noteForDrawing = notes[noteSet][note]
     ampForDrawing = noteAmps[noteSet][note]
