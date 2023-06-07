@@ -359,7 +359,6 @@ function strum()
     elseif selected_voice == 2 then
       crow.ii.wsyn.play_note((notes[noteSet][note]/12-1)+tune,math.random(10)*noteAmps[noteSet][note])
 
-    
     elseif selected_voice == 3 then
       local randomNumber = math.random(100)
       if randomNumber < voice_chance then
@@ -374,13 +373,11 @@ function strum()
       midi_amp = util.round(util.linlin(0, 10, 0, 127, math.random(10)*noteAmps[noteSet][note]))
       midi_dev:note_on(midi_note, midi_amp, params:get("midi_ch"))
 
+    end
     -- send current note and redraw
     noteForDrawing = notes[noteSet][note]
     ampForDrawing = noteAmps[noteSet][note]
     redraw()
-    end
-    
-    
     
     -- for testing w/ polyperc
     -- engine.amp(math.random(1)*noteAmps[noteSet][note])
@@ -388,7 +385,6 @@ function strum()
     
     -- for the screen
     -- do something cool with a slider with flickering bits on it
-    
     
     redraw()
   end
