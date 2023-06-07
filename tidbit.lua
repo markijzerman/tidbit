@@ -197,7 +197,7 @@ function init()
   
   local voice_options = {"jf", "w/synth", "jf & wsynth", "midi"}
   params:add_option("voices","voices",voice_options, 1)
-  params:add_number("midi_dev", "midi device", 1, 4, 1)
+  params:add_number("midi_dev", "midi device", 1, 16, 1)
   params:hide("midi_dev")
   params:add_number("midi_ch", "midi channel", 1, 16, 1)
   params:hide("midi_ch")
@@ -417,7 +417,7 @@ end
 
 function midi_stop_all_notes()
    local midi_dev = midi.connect(params:get("midi_dev"))
-   print("Stopping all notes on "..midi_dev.name)
+   print("stopping all notes on "..midi_dev.name)
    -- Stop all notes MIDI channel mode message.
    -- https://www.midi.org/specifications-old/item/table-3-control-change-messages-data-bytes-2
    midi_dev:cc(123, 0, params:get("midi_ch"))
