@@ -197,22 +197,28 @@ function init()
   
   local voice_options = {"jf", "w/synth", "jf & wsynth", "midi"}
   params:add_option("voices","voices",voice_options, 1)
-  params:add_number("midi_dev", "midi device", 1, 4, 1)
+  params:add_number("midi_dev", "midi device", 1, 16, 1)
   params:hide("midi_dev")
   params:add_number("midi_ch", "midi channel", 1, 16, 1)
   params:hide("midi_ch")
   _menu.rebuild_params()
   params:set_action("voices", function(x)
-		       selected_voice = x
-		       if voice_options[x] == "midi" then
-			  params:show("midi_dev")
-			  params:show("midi_ch")
-			  _menu.rebuild_params()
-		       else
-			  params:hide("midi_dev")
-			  params:hide("midi_ch")
-			  _menu.rebuild_params()
-		       end
+                       -- Unselecting MIDI, so stop all notes.
+                       if selected_voice == 4 and x ~= 4 then
+                          midi_stop_all_notes()
+                       end
+
+                       selected_voice = x
+
+                       if voice_options[x] == "midi" then
+                          params:show("midi_dev")
+                          params:show("midi_ch")
+                          _menu.rebuild_params()
+                       else
+                          params:hide("midi_dev")
+                          params:hide("midi_ch")
+                          _menu.rebuild_params()
+                       end
   end)
   selected_voice = 1
 
@@ -359,7 +365,6 @@ function strum()
     elseif selected_voice == 2 then
       crow.ii.wsyn.play_note((notes[noteSet][note]/12-1)+tune,math.random(10)*noteAmps[noteSet][note])
 
-    
     elseif selected_voice == 3 then
       local randomNumber = math.random(100)
       if randomNumber < voice_chance then
@@ -374,21 +379,19 @@ function strum()
       midi_amp = util.round(util.linlin(0, 10, 0, 127, math.random(10)*noteAmps[noteSet][note]))
       midi_dev:note_on(midi_note, midi_amp, params:get("midi_ch"))
 
+    end
+
     -- send current note and redraw
     noteForDrawing = notes[noteSet][note]
     ampForDrawing = noteAmps[noteSet][note]
     redraw()
-    end
-    
-    
-    
+
     -- for testing w/ polyperc
     -- engine.amp(math.random(1)*noteAmps[noteSet][note])
     -- engine.hz(midi_to_hz(48+(notes[noteSet][note]/12-1)+tune))
     
     -- for the screen
     -- do something cool with a slider with flickering bits on it
-    
     
     redraw()
   end
@@ -410,4 +413,21 @@ end
 function midi_to_hz(note) -- this is only here for the polyperc engine test
   local hz = (440 / 32) * (2 ^ ((note - 9) / 12))
   return hz
+end
+
+function midi_stop_all_notes()
+   local midi_dev = midi.connect(params:get("midi_dev"))
+   print("stopping all notes on "..midi_dev.name)
+   -- Stop all notes MIDI channel mode message.
+   -- https://www.midi.org/specifications-old/item/table-3-control-change-messages-data-bytes-2
+   midi_dev:cc(123, 0, params:get("midi_ch"))
+
+   -- Loop over all notes and stop them.
+   for note_num=0,127,1 do
+      midi_dev:note_off(midi_note, 0, params:get("midi_ch"))
+   end
+end
+
+function cleanup()
+   midi_stop_all_notes()
 end
