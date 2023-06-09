@@ -1,9 +1,9 @@
 -- tidbit by mark ijzerman
 --
 --
---   . . .    .  . .  . .. .   . . ..  .
---   .  .   ..  . . ..  . ....  .. ..  .
---     .   . ..   . .. .. . .    . ...  .
+--      . .   .  . ... . .. .   . .
+--   .  .   .. . . . ..  ..  .. ..  .
+--     .   . ..   . .. .   . . ..
 
 MusicUtil = require "musicutil"
 
@@ -423,7 +423,7 @@ function midi_stop_all_notes()
    midi_dev:cc(123, 0, params:get("midi_ch"))
 
    -- Loop over all notes and stop them.
-   for note_num=0,127,1 do
+   for midi_note=0,127,1 do
       midi_dev:note_off(midi_note, 0, params:get("midi_ch"))
    end
 end
