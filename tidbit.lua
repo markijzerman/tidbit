@@ -191,25 +191,47 @@ function init()
   -- set the menu
   params:add_separator("TIDBIT")
 
-  params:add{type="control",id='noteSet',"Noteset",controlspec=controlspec.new(1,#notes,'lin',1,1,'note set',0.08)} -- minval, maxval, warp, step, default, units, quantum, wrap
-  params:set_action("noteSet", function(x)  noteSet = x end)
-  noteSet= 1
+  params:add_number("noteSet", "noteset", 1, 4, 1)
+  params:set_action("noteSet", function(x) noteSet = x end)
+  noteSet = 1
+
+  local voice_options = {"jf", "w/syn", "jf & w/syn", "midi"}
+  params:add_option("voices","voices", voice_options, 1)
+  wsyn_add_params()
+  params:hide("w/syn")
+  -- params:add_taper('jf_wsyn_balance', 'jf & w/syn balance', 0.0, 1.0, 0.5)
+  params:add_control("jf_wsyn_balance", "jf & w/syn balance", controlspec.UNIPOLAR)
+  params:set("jf_wsyn_balance", 0.5)
+  params:hide("jf_wsyn_balance")
   
-  local voice_options = {"jf", "w/synth", "jf & wsynth", "midi"}
-  params:add_option("voices","voices",voice_options, 1)
   params:add_number("midi_dev", "midi device", 1, 16, 1)
   params:hide("midi_dev")
   params:add_number("midi_ch", "midi channel", 1, 16, 1)
   params:hide("midi_ch")
+
   _menu.rebuild_params()
+
   params:set_action("voices", function(x)
-                       -- Unselecting MIDI, so stop all notes.
-                       if selected_voice == 4 and x ~= 4 then
-                          midi_stop_all_notes()
-                       end
+		       -- only show w/syn options if relevant.
+		       if voice_options[x] == "w/syn"
+			  or voice_options[x] == "jf & w/syn" then
+			  params:show("w/syn")
+			  _menu.rebuild_params()
+		       else
+			  params:hide("w/syn")
+			  _menu.rebuild_params()
+		       end
 
-                       selected_voice = x
+		       -- only show jf & w/syn balance if relevant.
+		       if voice_options[x] == "jf & w/syn" then
+			  params:show("jf_wsyn_balance")
+			  _menu.rebuild_params()
+		       else
+			  params:hide("jf_wsyn_balance")
+			  _menu.rebuild_params()
+		       end
 
+		       -- only show midi options if relevant.
                        if voice_options[x] == "midi" then
                           params:show("midi_dev")
                           params:show("midi_ch")
@@ -219,19 +241,17 @@ function init()
                           params:hide("midi_ch")
                           _menu.rebuild_params()
                        end
+
+		       -- unselecting midi, so stop all notes.
+                       if selected_voice == 4 and x ~= 4 then
+                          midi_stop_all_notes()
+                       end
+
+                       selected_voice = x
   end)
   selected_voice = 1
-
-  params:add_number('voice_chance', 'voice_chance', 0, 100, 50)
-  params:set_action("voice_chance", function(x)  voice_chance = x end)
-  voice_chance = 50
   
-  wsyn_add_params()
-  
-  params:add{type="control",id='division',"Division",controlspec=controlspec.new(1,90,'lin',1,32,'div',0.01)}
-  params:set_action("division", function(x)  division = x end)
-  division = 32
-  
+  params:add_number("division", "division", 1, 32, 32)
   
   params:add_control('tune', "tune", controlspec.BIPOLAR)
   params:set_action("tune", function(x)  tune = x end)
@@ -292,7 +312,7 @@ function redraw()
   screen.move(5,10)
   screen.text("noteset: " ..noteSet)
   screen.move(5,20)
-  screen.text("division: 1/" ..division)
+  screen.text("division: 1/" ..params:get("division"))
 
   if noteForDrawing == nil and ampForDrawing == nil then
     for i=1,24 do
@@ -352,28 +372,26 @@ function enc(n,d)
   end
 end
 
-  
 function strum()
   while true do
     -- select which of the sets to play
-    clock.sync(1/division)
+     clock.sync(1/params:get("division"))
     note = math.random(#notes[1])
     
-    if selected_voice == 1 then
+    if selected_voice == 1 then -- jf
       crow.ii.jf.play_note((notes[noteSet][note]/12-1)+tune,math.random(10)*noteAmps[noteSet][note])
       
-    elseif selected_voice == 2 then
+    elseif selected_voice == 2 then -- w/syn
       crow.ii.wsyn.play_note((notes[noteSet][note]/12-1)+tune,math.random(10)*noteAmps[noteSet][note])
 
-    elseif selected_voice == 3 then
-      local randomNumber = math.random(100)
-      if randomNumber < voice_chance then
-      crow.ii.jf.play_note((notes[noteSet][note]/12-1)+tune,math.random(10)*noteAmps[noteSet][note])
-      else
+    elseif selected_voice == 3 then -- jf or w/syn at rando
+       if math.random() > params:get("jf_wsyn_balance") then
+	 crow.ii.jf.play_note((notes[noteSet][note]/12-1)+tune,math.random(10)*noteAmps[noteSet][note])
+       else
         crow.ii.wsyn.play_note((notes[noteSet][note]/12-1)+tune,math.random(10)*noteAmps[noteSet][note])
       end
       
-    elseif selected_voice == 4 then
+    elseif selected_voice == 4 then -- midi
       local midi_dev = midi.connect(params:get("midi_dev"))
       midi_note = math.floor(notes[noteSet][note]+tune*12)
       midi_amp = util.round(util.linlin(0, 10, 0, 127, math.random(10)*noteAmps[noteSet][note]))
